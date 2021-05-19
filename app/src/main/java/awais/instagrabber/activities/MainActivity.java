@@ -114,6 +114,7 @@ public class MainActivity extends BaseLanguageActivity implements FragmentManage
     private boolean isBackStackEmpty = false;
     private boolean isLoggedIn;
     private HideBottomViewOnScrollBehavior<BottomNavigationView> behavior;
+    private AppBarLayout.ScrollingViewBehavior mainNavHostScrollBehavior;
     private List<Tab> currentTabs;
     private List<Integer> showBottomViewDestinations = Collections.emptyList();
 
@@ -853,5 +854,23 @@ public class MainActivity extends BaseLanguageActivity implements FragmentManage
 
     public void hideSearchView() {
         binding.searchInputLayout.setVisibility(View.GONE);
+    }
+
+    public void removeNavHostScrollBehavior() {
+        try {
+            final CoordinatorLayout.LayoutParams layoutParams = (CoordinatorLayout.LayoutParams) binding.mainNavHost.getLayoutParams();
+            if (mainNavHostScrollBehavior == null) {
+                mainNavHostScrollBehavior = (AppBarLayout.ScrollingViewBehavior) layoutParams.getBehavior();
+            }
+            layoutParams.setBehavior(null);
+        } catch (Exception e) {
+            Log.e(TAG, "onCreate: ", e);
+        }
+    }
+
+    public void resetNavHostScrollBehavior() {
+        if (mainNavHostScrollBehavior == null) return;
+        final CoordinatorLayout.LayoutParams layoutParams = (CoordinatorLayout.LayoutParams) binding.mainNavHost.getLayoutParams();
+        layoutParams.setBehavior(mainNavHostScrollBehavior);
     }
 }

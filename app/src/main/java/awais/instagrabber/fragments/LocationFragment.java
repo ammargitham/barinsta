@@ -38,7 +38,6 @@ import com.google.android.material.snackbar.Snackbar;
 import com.google.common.collect.ImmutableList;
 
 import java.util.Date;
-import java.util.List;
 import java.util.Set;
 
 import awais.instagrabber.R;
@@ -55,7 +54,6 @@ import awais.instagrabber.db.repositories.FavoriteRepository;
 import awais.instagrabber.db.repositories.RepositoryCallback;
 import awais.instagrabber.dialogs.PostsLayoutPreferencesDialogFragment;
 import awais.instagrabber.models.PostsLayoutPreferences;
-import awais.instagrabber.models.StoryModel;
 import awais.instagrabber.models.enums.FavoriteType;
 import awais.instagrabber.repositories.requests.StoryViewerOptions;
 import awais.instagrabber.repositories.responses.Location;
@@ -566,27 +564,26 @@ public class LocationFragment extends Fragment implements SwipeRefreshLayout.OnR
     }
 
     private void fetchStories() {
-        if (isLoggedIn) {
-            storiesFetching = true;
-            storiesService.getUserStory(
-                    StoryViewerOptions.forLocation(locationId, locationModel.getName()),
-                    new ServiceCallback<List<StoryModel>>() {
-                        @Override
-                        public void onSuccess(final List<StoryModel> storyModels) {
-                            if (storyModels != null && !storyModels.isEmpty()) {
-                                locationDetailsBinding.mainLocationImage.setStoriesBorder(1);
-                                hasStories = true;
-                            }
-                            storiesFetching = false;
-                        }
-
-                        @Override
-                        public void onFailure(final Throwable t) {
-                            Log.e(TAG, "Error", t);
-                            storiesFetching = false;
-                        }
-                    });
-        }
+        if (!isLoggedIn) return;
+        // storiesFetching = true;
+        // storiesService.getUserStory(
+        //         StoryViewerOptions.forLocation(locationId, locationModel.getName()),
+        //         new ServiceCallback<List<StoryModel>>() {
+        //             @Override
+        //             public void onSuccess(final List<StoryModel> storyModels) {
+        //                 if (storyModels != null && !storyModels.isEmpty()) {
+        //                     locationDetailsBinding.mainLocationImage.setStoriesBorder(1);
+        //                     hasStories = true;
+        //                 }
+        //                 storiesFetching = false;
+        //             }
+        //
+        //             @Override
+        //             public void onFailure(final Throwable t) {
+        //                 Log.e(TAG, "Error", t);
+        //                 storiesFetching = false;
+        //             }
+        //         });
     }
 
     private void setTitle() {

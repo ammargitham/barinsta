@@ -3,23 +3,27 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="@dimen/story_item_width"
-    android:layout_height="@dimen/story_item_height"
-    android:layout_margin="4dp"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_rounded_corner_no_padding"
     android:clickable="true"
     android:focusable="true"
-    android:foreground="?android:selectableItemBackground">
+    android:foreground="@drawable/fg_semi_black_with_ripple"
+    tools:layout_height="@dimen/story_item_height"
+    tools:layout_marginEnd="4dp">
 
     <com.facebook.drawee.view.SimpleDraweeView
         android:id="@+id/icon"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         app:actualImageScaleType="fitCenter"
+        app:roundedCornerRadius="8dp"
         tools:background="@mipmap/ic_launcher" />
 
-    <androidx.appcompat.widget.AppCompatImageView
-        android:id="@+id/selectedView"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="@android:drawable/gallery_thumb"
-        android:visibility="gone" />
+    <!--<androidx.appcompat.widget.AppCompatImageView-->
+    <!--    android:id="@+id/selectedView"-->
+    <!--    android:layout_width="match_parent"-->
+    <!--    android:layout_height="match_parent"-->
+    <!--    android:background="@android:drawable/gallery_thumb"-->
+    <!--    android:visibility="gone"-->
+    <!--    tools:visibility="visible" />-->
 </FrameLayout>

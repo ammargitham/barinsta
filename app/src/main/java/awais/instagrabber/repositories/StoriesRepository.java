@@ -3,6 +3,8 @@ package awais.instagrabber.repositories;
 import java.util.Map;
 
 import awais.instagrabber.repositories.responses.StoryStickerResponse;
+import awais.instagrabber.repositories.responses.story.StoryArchiveResponse;
+import awais.instagrabber.repositories.responses.story.StoryResponse;
 import retrofit2.Call;
 import retrofit2.http.FieldMap;
 import retrofit2.http.FormUrlEncoded;
@@ -24,10 +26,10 @@ public interface StoriesRepository {
     Call<String> fetchHighlights(@Path("uid") final long uid);
 
     @GET("/api/v1/archive/reel/day_shells/")
-    Call<String> fetchArchive(@QueryMap Map<String, String> queryParams);
+    Call<StoryArchiveResponse> fetchArchive(@QueryMap Map<String, String> queryParams);
 
     @GET
-    Call<String> getUserStory(@Url String url);
+    Call<StoryResponse> getUserStory(@Url String url);
 
     @FormUrlEncoded
     @POST("/api/v1/media/{storyId}/{stickerId}/{action}/")

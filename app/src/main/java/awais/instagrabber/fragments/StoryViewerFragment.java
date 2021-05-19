@@ -1,8 +1,14 @@
 package awais.instagrabber.fragments;
 
+import android.animation.AnimatorSet;
+import android.animation.ObjectAnimator;
+import android.animation.ValueAnimator;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.graphics.drawable.Animatable;
+import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -14,6 +20,7 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewOutlineProvider;
 import android.widget.EditText;
 import android.widget.Toast;
 
@@ -21,20 +28,19 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.core.graphics.ColorUtils;
 import androidx.core.view.GestureDetectorCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.transition.TransitionManager;
 
 import com.facebook.drawee.backends.pipeline.Fresco;
 import com.facebook.drawee.controller.BaseControllerListener;
 import com.facebook.drawee.interfaces.DraweeController;
 import com.facebook.imagepipeline.image.ImageInfo;
-import com.facebook.imagepipeline.request.ImageRequest;
-import com.facebook.imagepipeline.request.ImageRequestBuilder;
 import com.google.android.exoplayer2.MediaItem;
 import com.google.android.exoplayer2.SimpleExoPlayer;
 import com.google.android.exoplayer2.source.DefaultMediaSourceFactory;
@@ -47,10 +53,17 @@ import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 import awais.instagrabber.R;
+import awais.instagrabber.activities.MainActivity;
 import awais.instagrabber.adapters.StoriesAdapter;
 import awais.instagrabber.asyncs.CreateThreadAction;
+import awais.instagrabber.customviews.helpers.VerticalSpaceItemDecoration;
+import awais.instagrabber.customviews.stickers.QuestionStickerView;
 import awais.instagrabber.databinding.FragmentStoryViewerBinding;
 import awais.instagrabber.interfaces.SwipeEvent;
 import awais.instagrabber.models.StoryModel;
@@ -62,11 +75,21 @@ import awais.instagrabber.models.stickers.SliderModel;
 import awais.instagrabber.repositories.requests.StoryViewerOptions;
 import awais.instagrabber.repositories.requests.StoryViewerOptions.Type;
 import awais.instagrabber.repositories.requests.directmessages.BroadcastOptions;
+import awais.instagrabber.repositories.responses.User;
+import awais.instagrabber.repositories.responses.VideoVersion;
 import awais.instagrabber.repositories.responses.directmessages.DirectThreadBroadcastResponse;
+import awais.instagrabber.repositories.responses.story.StoryMedia;
+import awais.instagrabber.repositories.responses.story.StoryPoll;
+import awais.instagrabber.repositories.responses.story.StoryQuestion;
+import awais.instagrabber.repositories.responses.story.StorySlider;
+import awais.instagrabber.repositories.responses.story.StorySticker;
 import awais.instagrabber.utils.Constants;
 import awais.instagrabber.utils.CookieUtils;
 import awais.instagrabber.utils.DownloadUtils;
+import awais.instagrabber.utils.ResponseBodyUtils;
+import awais.instagrabber.utils.StickerFactory;
 import awais.instagrabber.utils.TextUtils;
+import awais.instagrabber.utils.Utils;
 import awais.instagrabber.viewmodels.ArchivesViewModel;
 import awais.instagrabber.viewmodels.FeedStoriesViewModel;
 import awais.instagrabber.viewmodels.HighlightsViewModel;
@@ -81,10 +104,11 @@ import retrofit2.Response;
 
 import static awais.instagrabber.utils.Utils.settingsHelper;
 
-public class StoryViewerFragment extends Fragment {
+public class StoryViewerFragment extends Fragment implements QuestionStickerView.OnQuestionStickerClickListener {
     private static final String TAG = "StoryViewerFragment";
 
-    private AppCompatActivity fragmentActivity;
+    @Nullable
+    private MainActivity fragmentActivity;
     private View root;
     private FragmentStoryViewerBinding binding;
     private String currentStoryUsername;
@@ -102,22 +126,27 @@ public class StoryViewerFragment extends Fragment {
     private String[] mentions;
     private QuizModel quiz;
     private SliderModel slider;
-    private MenuItem menuDownload, menuDm, menuProfile;
+    private MenuItem menuDownload;
+    private MenuItem menuDm;
+    private MenuItem menuProfile;
     private SimpleExoPlayer player;
-    // private boolean isHashtag;
-    // private boolean isLoc;
-    // private String highlight;
-    private String actionBarTitle, actionBarSubtitle;
-    private boolean fetching = false, sticking = false, shouldRefresh = true;
-    private boolean downloadVisible = false, dmVisible = false, profileVisible = true;
+    private String actionBarTitle;
+    private String actionBarSubtitle;
+    private boolean fetching = false;
+    private boolean sticking = false;
+    private boolean shouldRefresh = true;
+    private boolean downloadVisible = false;
+    private boolean dmVisible = false;
+    private boolean profileVisible = true;
     private int currentFeedStoryIndex;
     private double sliderValue;
     private StoryViewerFragmentViewModel viewModel;
     private StoriesViewModel<?> storiesViewModel;
-    // private boolean isHighlight;
-    // private boolean isArchive;
-    // private boolean isNotification;
     private DirectMessagesService directMessagesService;
+    private Drawable originalToolbarBg;
+    private Drawable originalCollapsingToolbarBg;
+    private Drawable originalAppbarBg;
+    private ViewOutlineProvider originalAppbarOutlineProvider;
 
     private final String cookie = settingsHelper.getString(Constants.COOKIE);
     private StoryViewerOptions options;
@@ -130,7 +159,7 @@ public class StoryViewerFragment extends Fragment {
         final long userIdFromCookie = CookieUtils.getUserIdFromCookie(cookie);
         final String deviceId = settingsHelper.getString(Constants.DEVICE_UUID);
         viewModel = new ViewModelProvider(this).get(StoryViewerFragmentViewModel.class);
-        fragmentActivity = (AppCompatActivity) getActivity();
+        fragmentActivity = (MainActivity) getActivity();
         if (fragmentActivity == null) return;
         storiesService = StoriesService.getInstance(csrfToken, userIdFromCookie, deviceId);
         mediaService = MediaService.getInstance(null, null, 0);
@@ -250,15 +279,35 @@ public class StoryViewerFragment extends Fragment {
         if (player != null) {
             player.pause();
         }
+        if (fragmentActivity != null) {
+            fragmentActivity.getToolbar().setBackground(originalToolbarBg);
+            fragmentActivity.getCollapsingToolbarView().setBackground(originalCollapsingToolbarBg);
+            fragmentActivity.getAppbarLayout().setBackground(originalAppbarBg);
+            fragmentActivity.getAppbarLayout().setOutlineProvider(originalAppbarOutlineProvider);
+            fragmentActivity.resetNavHostScrollBehavior();
+        }
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        final ActionBar actionBar = fragmentActivity.getSupportActionBar();
-        if (actionBar != null) {
-            actionBar.setTitle(actionBarTitle);
-            actionBar.setSubtitle(actionBarSubtitle);
+        if (fragmentActivity != null) {
+            final ActionBar actionBar = fragmentActivity.getSupportActionBar();
+            if (actionBar != null) {
+                actionBar.setTitle(actionBarTitle);
+                actionBar.setSubtitle(actionBarSubtitle);
+            }
+            binding.getRoot().postDelayed(() -> {
+                originalToolbarBg = fragmentActivity.getToolbar().getBackground();
+                originalCollapsingToolbarBg = fragmentActivity.getCollapsingToolbarView().getBackground();
+                originalAppbarBg = fragmentActivity.getAppbarLayout().getBackground();
+                originalAppbarOutlineProvider = fragmentActivity.getAppbarLayout().getOutlineProvider();
+                fragmentActivity.getAppbarLayout().setBackground(new ColorDrawable(Color.TRANSPARENT));
+                fragmentActivity.getAppbarLayout().setOutlineProvider(null);
+                fragmentActivity.getCollapsingToolbarView().setBackground(new ColorDrawable(Color.TRANSPARENT));
+                fragmentActivity.getToolbar().setBackground(new ColorDrawable(Color.TRANSPARENT));
+                fragmentActivity.removeNavHostScrollBehavior();
+            }, 500);
         }
         setHasOptionsMenu(true);
     }
@@ -275,7 +324,7 @@ public class StoryViewerFragment extends Fragment {
     }
 
     private void init() {
-        if (getArguments() == null) return;
+        if (fragmentActivity == null || getArguments() == null) return;
         final StoryViewerFragmentArgs fragmentArgs = StoryViewerFragmentArgs.fromBundle(getArguments());
         options = fragmentArgs.getOptions();
         viewModel.setOptions(options);
@@ -297,21 +346,21 @@ public class StoryViewerFragment extends Fragment {
                 break;
         }
         viewModel.setStories(storiesViewModel.getList().getValue());
-        setupBottomSlider();
+        setupThumbnails();
         setupObservers();
         viewModel.init();
+        // binding.getRoot().setOnStickerClickListener(this);
     }
 
-    private void setupBottomSlider() {
+    private void setupThumbnails() {
         // setupListeners();
         final Context context = getContext();
         if (context == null) return;
         final LinearLayoutManager layoutManager = new LinearLayoutManager(context, LinearLayoutManager.HORIZONTAL, false);
         binding.currentStoryItems.setLayoutManager(layoutManager);
+        final VerticalSpaceItemDecoration itemDecoration = new VerticalSpaceItemDecoration(Utils.convertDpToPx(4));
+        binding.currentStoryItems.addItemDecoration(itemDecoration);
         storyItemsAdapter = new StoriesAdapter((model, position) -> {
-            // currentStoryItem = model;
-            // slidePos = position;
-            // refreshStory();
             viewModel.setActiveStoryItemIndex(position);
         });
         binding.currentStoryItems.setAdapter(storyItemsAdapter);
@@ -320,36 +369,47 @@ public class StoryViewerFragment extends Fragment {
     }
 
     private void setupObservers() {
-        viewModel.getCurrentStoryItems().observe(getViewLifecycleOwner(), storyModels -> {
+        viewModel.getCurrentReel().observe(getViewLifecycleOwner(), reel -> {
             if (storyItemsAdapter == null) return;
-            storyItemsAdapter.submitList(storyModels);
+            storyItemsAdapter.submitList(reel != null ? reel.getItems() : null);
         });
-        viewModel.getActiveStoryItem().observe(getViewLifecycleOwner(), storyModel -> {
-            if (storyModel == null) {
+        viewModel.getActiveStoryMedia().observe(getViewLifecycleOwner(), storyMedia -> {
+            if (storyMedia == null) {
                 hideAllItemViews();
                 return;
             }
-            final MediaItemType itemType = storyModel.getItemType();
+            final MediaItemType itemType = storyMedia.getMediaType();
             switch (itemType) {
                 case MEDIA_TYPE_IMAGE:
-                    setupImage(storyModel);
+                    setupImage(storyMedia);
                     break;
                 case MEDIA_TYPE_VIDEO:
-                    setupVideo(storyModel);
+                    setupVideo(storyMedia);
                     break;
                 case MEDIA_TYPE_LIVE:
                     break;
                 case MEDIA_TYPE_SLIDER:
                 case MEDIA_TYPE_VOICE:
                 default:
-                    break;
+                    return;
             }
+            setupUserDetails(storyMedia);
+            setupStickers(storyMedia);
         });
         viewModel.getActiveStoryItemIndex().observe(getViewLifecycleOwner(),
                                                     index -> storyItemsAdapter.setActiveIndex(index == null ? 0 : index));
     }
 
+    private void setupUserDetails(@NonNull final StoryMedia storyMedia) {
+        final User user = storyMedia.getUser();
+        if (user == null) return;
+        binding.profilePic.setImageURI(user.getProfilePicUrl());
+        binding.username.setUsername(user.getUsername(), user.isVerified());
+    }
+
     private void hideAllItemViews() {
+        binding.profilePic.setImageURI((Uri) null);
+        binding.username.setUsername("");
         binding.progressView.setVisibility(View.GONE);
         binding.playerView.setVisibility(View.GONE);
         binding.imageViewer.setVisibility(View.GONE);
@@ -949,18 +1009,14 @@ public class StoryViewerFragment extends Fragment {
     //     DownloadUtils.download(context, currentStory);
     // }
 
-
-    private void setupImage(@NonNull final StoryModel storyItem) {
+    private void setupImage(@NonNull final StoryMedia storyMedia) {
         binding.progressView.setVisibility(View.VISIBLE);
         binding.playerView.setVisibility(View.GONE);
         binding.imageViewer.setVisibility(View.VISIBLE);
-        final ImageRequest requestBuilder = ImageRequestBuilder.newBuilderWithSource(Uri.parse(storyItem.getStoryUrl()))
-                                                               .setLocalThumbnailPreviewsEnabled(true)
-                                                               .setProgressiveRenderingEnabled(true)
-                                                               .build();
+        final String imageUrl = ResponseBodyUtils.getImageUrl(storyMedia);
         final DraweeController controller = Fresco
                 .newDraweeControllerBuilder()
-                .setImageRequest(requestBuilder)
+                .setUri(imageUrl)
                 .setOldController(binding.imageViewer.getController())
                 .setControllerListener(new BaseControllerListener<ImageInfo>() {
                     @Override
@@ -972,18 +1028,7 @@ public class StoryViewerFragment extends Fragment {
                     public void onFinalImageSet(final String id,
                                                 final ImageInfo imageInfo,
                                                 final Animatable animatable) {
-                        if (menuDownload != null) {
-                            downloadVisible = true;
-                            menuDownload.setVisible(true);
-                        }
-                        if (storyItem.canReply() && menuDm != null) {
-                            dmVisible = true;
-                            menuDm.setVisible(true);
-                        }
-                        if (!TextUtils.isEmpty(storyItem.getUsername())) {
-                            profileVisible = true;
-                            menuProfile.setVisible(true);
-                        }
+                        showMenuItems(storyMedia);
                         binding.progressView.setVisibility(View.GONE);
                     }
                 })
@@ -991,7 +1036,7 @@ public class StoryViewerFragment extends Fragment {
         binding.imageViewer.setController(controller);
     }
 
-    private void setupVideo(@NonNull final StoryModel storyModel) {
+    private void setupVideo(@NonNull final StoryMedia storyMedia) {
         binding.playerView.setVisibility(View.VISIBLE);
         binding.progressView.setVisibility(View.GONE);
         binding.imageViewer.setVisibility(View.GONE);
@@ -1007,7 +1052,14 @@ public class StoryViewerFragment extends Fragment {
         binding.playerView.setShowFastForwardButton(false);
         player.setPlayWhenReady(settingsHelper.getBoolean(Constants.AUTOPLAY_VIDEOS));
 
-        final Uri uri = Uri.parse(storyModel.getVideoUrl());
+        String url = null;
+        final List<VideoVersion> videoVersions = storyMedia.getVideoVersions();
+        if (videoVersions != null && !videoVersions.isEmpty()) {
+            final VideoVersion videoVersion = videoVersions.get(0);
+            url = videoVersion.getUrl();
+        }
+        if (url == null) return;
+        final Uri uri = Uri.parse(url);
         final MediaItem mediaItem = MediaItem.fromUri(uri);
         final MediaSourceFactory mediaSourceFactory = new DefaultMediaSourceFactory(new DefaultDataSourceFactory(context, "instagram"));
         final MediaSource mediaSource = mediaSourceFactory.createMediaSource(mediaItem);
@@ -1017,7 +1069,7 @@ public class StoryViewerFragment extends Fragment {
                                       @Nullable final MediaSource.MediaPeriodId mediaPeriodId,
                                       @NonNull final LoadEventInfo loadEventInfo,
                                       @NonNull final MediaLoadData mediaLoadData) {
-                showMenuItems(storyModel);
+                showMenuItems(storyMedia);
                 binding.progressView.setVisibility(View.VISIBLE);
             }
 
@@ -1026,7 +1078,7 @@ public class StoryViewerFragment extends Fragment {
                                         @Nullable final MediaSource.MediaPeriodId mediaPeriodId,
                                         @NonNull final LoadEventInfo loadEventInfo,
                                         @NonNull final MediaLoadData mediaLoadData) {
-                showMenuItems(storyModel);
+                showMenuItems(storyMedia);
                 binding.progressView.setVisibility(View.GONE);
             }
 
@@ -1048,36 +1100,6 @@ public class StoryViewerFragment extends Fragment {
                 hideMenuItems();
                 binding.progressView.setVisibility(View.GONE);
             }
-
-            private void showMenuItems(@NonNull final StoryModel storyModel) {
-                if (menuDownload != null) {
-                    downloadVisible = true;
-                    menuDownload.setVisible(true);
-                }
-                if (storyModel.canReply() && menuDm != null) {
-                    dmVisible = true;
-                    menuDm.setVisible(true);
-                }
-                if (!TextUtils.isEmpty(storyModel.getUsername()) && menuProfile != null) {
-                    profileVisible = true;
-                    menuProfile.setVisible(true);
-                }
-            }
-
-            private void hideMenuItems() {
-                if (menuDownload != null) {
-                    downloadVisible = false;
-                    menuDownload.setVisible(false);
-                }
-                if (menuDm != null) {
-                    dmVisible = false;
-                    menuDm.setVisible(false);
-                }
-                if (menuProfile != null) {
-                    profileVisible = false;
-                    menuProfile.setVisible(false);
-                }
-            }
         });
         player.setMediaSource(mediaSource);
         player.prepare();
@@ -1089,6 +1111,143 @@ public class StoryViewerFragment extends Fragment {
         // });
     }
 
+    private void setupStickers(@NonNull final StoryMedia storyMedia) {
+        binding.stickers.removeAllViews();
+        final List<View> stickerViews = new ArrayList<>();
+        final List<StoryQuestion> storyQuestions = storyMedia.getStoryQuestions();
+        if (storyQuestions != null && !storyQuestions.isEmpty()) {
+            final List<View> questionStickers = setupStickers(storyMedia, storyQuestions);
+            setupQuestionStickers(questionStickers);
+            stickerViews.addAll(questionStickers);
+        }
+        final List<StoryPoll> storyPolls = storyMedia.getStoryPolls();
+        if (storyPolls != null && !storyPolls.isEmpty()) {
+            stickerViews.addAll(setupStickers(storyMedia, storyPolls));
+        }
+        final List<StorySlider> storySliders = storyMedia.getStorySliders();
+        if (storySliders != null && !storySliders.isEmpty()) {
+            stickerViews.addAll(setupStickers(storyMedia, storySliders));
+        }
+        for (final View view : stickerViews) {
+            binding.stickers.addView(view);
+        }
+        // if (stickerViews.isEmpty()) return;
+        // binding.drawView.setVisibility(View.VISIBLE);
+        // binding.drawView.setRects(stickerViews);
+        // binding.getRoot().setStickers(stickerViews);
+    }
+
+    @NonNull
+    private List<View> setupStickers(@NonNull final StoryMedia storyMedia,
+                                     @NonNull final List<? extends StorySticker> storyStickers) {
+        return storyStickers
+                .stream()
+                .map(storySticker -> {
+                    final Context context = getContext();
+                    if (context == null) return null;
+                    return StickerFactory.createSticker(
+                            context,
+                            storySticker,
+                            storyMedia,
+                            binding.storyContainer.getMeasuredWidth(),
+                            binding.storyContainer.getMeasuredHeight()
+                    );
+                })
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+    }
+
+    private void setupQuestionStickers(@NonNull final List<View> questionStickerViews) {
+        for (final View questionStickerView : questionStickerViews) {
+            if (!(questionStickerView instanceof QuestionStickerView)) continue;
+            ((QuestionStickerView) questionStickerView).setOnQuestionStickerClickListener(this);
+        }
+    }
+
+    private void showMenuItems(@NonNull final StoryMedia storyMedia) {
+        if (menuDownload != null) {
+            downloadVisible = true;
+            menuDownload.setVisible(true);
+        }
+        if (storyMedia.canReply() && menuDm != null) {
+            dmVisible = true;
+            menuDm.setVisible(true);
+        }
+        final User user = storyMedia.getUser();
+        if (menuProfile != null && user != null && !TextUtils.isEmpty(user.getUsername())) {
+            profileVisible = true;
+            menuProfile.setVisible(true);
+        }
+    }
+
+    private void hideMenuItems() {
+        if (menuDownload != null) {
+            downloadVisible = false;
+            menuDownload.setVisible(false);
+        }
+        if (menuDm != null) {
+            dmVisible = false;
+            menuDm.setVisible(false);
+        }
+        if (menuProfile != null) {
+            profileVisible = false;
+            menuProfile.setVisible(false);
+        }
+    }
+
+    @Override
+    public void onQuestionStickerClick(@NonNull final QuestionStickerView view, @NonNull final StoryQuestion storyQuestion) {
+        Log.d(TAG, "onQuestionStickerClick: " + storyQuestion);
+        final long questionId = storyQuestion.getQuestionSticker().getQuestionId();
+        binding.getRoot().post(() -> {
+            TransitionManager.beginDelayedTransition(binding.getRoot());
+            binding.stickers.removeView(view);
+            binding.activeStickerContainer.addView(view);
+            binding.activeStickerContainer.setVisibility(View.VISIBLE);
+            final String backgroundColor = storyQuestion.getQuestionSticker().getBackgroundColor();
+            final int color = Color.parseColor(backgroundColor);
+            binding.activeStickerContainer.setBackgroundColor(ColorUtils.setAlphaComponent(color, 200));
+            view.setElevation(Utils.convertDpToPx(8));
+            binding.getRoot().post(() -> {
+                final ValueAnimator translationX = ObjectAnimator.ofFloat(
+                        view,
+                        "translationX",
+                        (Utils.displayMetrics.widthPixels - view.getMeasuredWidth()) / 2f
+                );
+                final ValueAnimator translationY = ObjectAnimator.ofFloat(
+                        view,
+                        "translationY",
+                        Utils.displayMetrics.heightPixels * 0.3f
+                );
+                final ValueAnimator rotation = ObjectAnimator.ofFloat(
+                        view,
+                        "rotation",
+                        0
+                );
+                final AnimatorSet animatorSet = new AnimatorSet();
+                animatorSet.playTogether(translationX, translationY, rotation);
+                animatorSet.setDuration(500);
+                animatorSet.start();
+            });
+        });
+    }
+
+    // @Override
+    // public void onStickerClick(@NonNull final StoryStickerRect sticker) {
+    //     Log.d(TAG, "onStickerClick: " + sticker);
+    // }
+
+    // public static class StoryStickerRect {
+    //     private final StorySticker sticker;
+    //
+    //     public StoryStickerRect(@NonNull final StorySticker sticker) {
+    //         this.sticker = sticker;
+    //     }
+    //
+    //     public StorySticker getSticker() {
+    //         return sticker;
+    //     }
+    // }
     // private void setupLive() {
     //     binding.playerView.setVisibility(View.VISIBLE);
     //     binding.progressView.setVisibility(View.GONE);

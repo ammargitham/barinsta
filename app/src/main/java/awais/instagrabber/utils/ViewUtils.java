@@ -29,7 +29,8 @@ public final class ViewUtils {
     public static final int MATCH_PARENT = -1;
     public static final int WRAP_CONTENT = -2;
 
-    public static Drawable createRoundRectDrawableWithIcon(final Context context, int rad, int iconRes) {
+    @Nullable
+    public static Drawable createRoundRectDrawableWithIcon(@NonNull final Context context, int rad, int iconRes) {
         ShapeDrawable defaultDrawable = new ShapeDrawable(new RoundRectShape(new float[]{rad, rad, rad, rad, rad, rad, rad, rad}, null, null));
         defaultDrawable.getPaint().setColor(0xffffffff);
         final Drawable d = ResourcesCompat.getDrawable(context.getResources(), iconRes, null);
@@ -38,12 +39,14 @@ public final class ViewUtils {
         return new CombinedDrawable(defaultDrawable, drawable);
     }
 
+    @NonNull
     public static Drawable createRoundRectDrawable(int rad, int defaultColor) {
-        ShapeDrawable defaultDrawable = new ShapeDrawable(new RoundRectShape(new float[]{rad, rad, rad, rad, rad, rad, rad, rad}, null, null));
+        final ShapeDrawable defaultDrawable = new ShapeDrawable(new RoundRectShape(new float[]{rad, rad, rad, rad, rad, rad, rad, rad}, null, null));
         defaultDrawable.getPaint().setColor(defaultColor);
         return defaultDrawable;
     }
 
+    @NonNull
     public static FrameLayout.LayoutParams createFrame(int width,
                                                        float height,
                                                        int gravity,

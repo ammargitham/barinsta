@@ -8,15 +8,18 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
-import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import awais.instagrabber.models.FeedStoryModel;
 import awais.instagrabber.models.HighlightModel;
-import awais.instagrabber.models.StoryModel;
 import awais.instagrabber.repositories.requests.StoryViewerOptions;
+import awais.instagrabber.repositories.responses.story.Reel;
+import awais.instagrabber.repositories.responses.story.StoryArchiveResponse.ArchiveResponseItem;
+import awais.instagrabber.repositories.responses.story.StoryMedia;
+import awais.instagrabber.repositories.responses.story.StoryResponse;
 import awais.instagrabber.utils.Constants;
 import awais.instagrabber.utils.CookieUtils;
 import awais.instagrabber.webservices.ServiceCallback;
@@ -31,8 +34,8 @@ public class StoryViewerFragmentViewModel extends ViewModel {
      */
     private final MutableLiveData<Integer> currentStoryIndex = new MutableLiveData<>(0);
 
-    private final MutableLiveData<List<StoryModel>> currentStoryItems = new MutableLiveData<>();
-    private final MutableLiveData<StoryModel> activeStoryItem = new MutableLiveData<>();
+    private final MutableLiveData<Reel> currentReel = new MutableLiveData<>();
+    private final MutableLiveData<StoryMedia> activeStoryItem = new MutableLiveData<>();
     private final MutableLiveData<Integer> activeStoryItemIndex = new MutableLiveData<>(0);
 
     private final StoriesService storiesService;
@@ -52,11 +55,11 @@ public class StoryViewerFragmentViewModel extends ViewModel {
         storiesService = StoriesService.getInstance(csrfToken, userIdFromCookie, deviceId);
     }
 
-    public LiveData<List<StoryModel>> getCurrentStoryItems() {
-        return currentStoryItems;
+    public LiveData<Reel> getCurrentReel() {
+        return currentReel;
     }
 
-    public LiveData<StoryModel> getActiveStoryItem() {
+    public LiveData<StoryMedia> getActiveStoryMedia() {
         return activeStoryItem;
     }
 
@@ -68,9 +71,12 @@ public class StoryViewerFragmentViewModel extends ViewModel {
         final int index = Math.max(activeStoryItemIndex, 0);
         this.activeStoryItemIndex.postValue(index);
         try {
-            final List<StoryModel> currentStoryItemsValue = currentStoryItems.getValue();
-            if (currentStoryItemsValue == null || currentStoryItemsValue.isEmpty()) return;
-            activeStoryItem.postValue(currentStoryItemsValue.get(index));
+            final Reel currentReel = this.currentReel.getValue();
+            if (currentReel == null || currentReel.getItems() == null || currentReel.getItems().isEmpty()) {
+                activeStoryItem.postValue(null);
+                return;
+            }
+            activeStoryItem.postValue(currentReel.getItems().get(index));
         } catch (Exception e) {
             Log.e(TAG, "onSuccess: ", e);
             activeStoryItem.postValue(null);
@@ -90,7 +96,7 @@ public class StoryViewerFragmentViewModel extends ViewModel {
     public void init() {
         final int storyIndex = getCurrentStoryIndexFromOptions(options);
         currentStoryIndex.postValue(storyIndex);
-        setCurrentStoryItems(storyIndex);
+        setCurrentReel(storyIndex);
     }
 
     private int getCurrentStoryIndexFromOptions(@NonNull final StoryViewerOptions options) {
@@ -110,7 +116,7 @@ public class StoryViewerFragmentViewModel extends ViewModel {
         return storyIndex;
     }
 
-    private void setCurrentStoryItems(final int storyIndex) {
+    private void setCurrentReel(final int storyIndex) {
         switch (options.getType()) {
             case HASHTAG:
             case LOCATION:
@@ -139,8 +145,8 @@ public class StoryViewerFragmentViewModel extends ViewModel {
             case STORY_ARCHIVE: {
                 if (stories == null) return;
                 final Object story = stories.get(storyIndex);
-                if (!(story instanceof HighlightModel)) return;
-                setArchiveStoryItems((HighlightModel) story);
+                if (!(story instanceof ArchiveResponseItem)) return;
+                setArchiveStoryItems((ArchiveResponseItem) story);
                 break;
             }
         }
@@ -175,10 +181,10 @@ public class StoryViewerFragmentViewModel extends ViewModel {
         fetchUserStory(options);
     }
 
-    private void setArchiveStoryItems(@NonNull final HighlightModel story) {
-        final String storyMediaId = parseStoryMediaId(story.getId());
+    private void setArchiveStoryItems(@NonNull final ArchiveResponseItem story) {
+        // final String storyMediaId = parseStoryMediaId(story.getId());
         // currentStoryUsername = model.getTitle();
-        fetchUserStory(StoryViewerOptions.forStoryArchive(storyMediaId));
+        fetchUserStory(StoryViewerOptions.forStoryArchive(story.getId()));
     }
 
     /**
@@ -197,17 +203,34 @@ public class StoryViewerFragmentViewModel extends ViewModel {
 
     private void fetchUserStory(@NonNull final StoryViewerOptions fetchOptions) {
         final int tempActiveStoryItemIndex = 0;
-        storiesService.getUserStory(fetchOptions, new ServiceCallback<List<StoryModel>>() {
+        storiesService.getUserStory(fetchOptions, new ServiceCallback<StoryResponse>() {
             @Override
-            public void onSuccess(final List<StoryModel> result) {
-                currentStoryItems.postValue(result);
+            public void onSuccess(final StoryResponse response) {
                 activeStoryItemIndex.postValue(tempActiveStoryItemIndex);
-                if (result == null || result.isEmpty()) {
+                Reel reel = response.getReel();
+                if (reel == null) {
+                    // reel is null, check reels
+                    final Map<String, Reel> reels = response.getReels();
+                    if (reels != null && !reels.isEmpty()) {
+                        // get first reel inside reels
+                        final Map.Entry<String, Reel> entry = reels.entrySet().iterator().next();
+                        reel = entry.getValue();
+                    }
+                }
+                if (reel == null) {
+                    // if reel is still null, abort
+                    currentReel.postValue(null);
+                    activeStoryItem.postValue(null);
+                    return;
+                }
+                currentReel.postValue(reel);
+                if (reel.getItems() == null || reel.getItems().isEmpty()) {
                     activeStoryItem.postValue(null);
                     return;
                 }
                 try {
-                    activeStoryItem.postValue(result.get(tempActiveStoryItemIndex));
+                    final StoryMedia storyMedia = reel.getItems().get(tempActiveStoryItemIndex);
+                    activeStoryItem.postValue(storyMedia);
                 } catch (Exception e) {
                     Log.e(TAG, "onSuccess: ", e);
                     activeStoryItem.postValue(null);
@@ -223,22 +246,22 @@ public class StoryViewerFragmentViewModel extends ViewModel {
 
     private void fetchStoryItem(final long mediaId) {
         final int tempActiveStoryItemIndex = 0;
-        storiesService.fetch(mediaId, new ServiceCallback<StoryModel>() {
-            @Override
-            public void onSuccess(final StoryModel result) {
-                currentStoryItems.postValue(Collections.singletonList(result));
-                activeStoryItemIndex.postValue(tempActiveStoryItemIndex);
-                if (result == null) {
-                    activeStoryItem.postValue(null);
-                    return;
-                }
-                activeStoryItem.postValue(result);
-            }
-
-            @Override
-            public void onFailure(final Throwable t) {
-                Log.e(TAG, "onFailure: ", t);
-            }
-        });
+        // storiesService.fetch(mediaId, new ServiceCallback<StoryModel>() {
+        //     @Override
+        //     public void onSuccess(final StoryModel result) {
+        //         currentReel.postValue(Collections.singletonList(result));
+        //         activeStoryItemIndex.postValue(tempActiveStoryItemIndex);
+        //         if (result == null) {
+        //             activeStoryItem.postValue(null);
+        //             return;
+        //         }
+        //         activeStoryItem.postValue(result);
+        //     }
+        //
+        //     @Override
+        //     public void onFailure(final Throwable t) {
+        //         Log.e(TAG, "onFailure: ", t);
+        //     }
+        // });
     }
 }

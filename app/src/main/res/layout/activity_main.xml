@@ -47,7 +47,7 @@
                     app:endIconDrawable="@drawable/ic_close_24"
                     app:endIconMode="custom"
                     app:hintEnabled="false"
-                    tools:visibility="visible">
+                    tools:visibility="gone">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:layout_width="match_parent"

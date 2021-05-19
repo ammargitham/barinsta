@@ -76,7 +76,6 @@ import awais.instagrabber.managers.DirectMessagesManager;
 import awais.instagrabber.managers.InboxManager;
 import awais.instagrabber.models.HighlightModel;
 import awais.instagrabber.models.PostsLayoutPreferences;
-import awais.instagrabber.models.StoryModel;
 import awais.instagrabber.models.enums.FavoriteType;
 import awais.instagrabber.models.enums.PostItemType;
 import awais.instagrabber.repositories.requests.StoryViewerOptions;
@@ -86,6 +85,7 @@ import awais.instagrabber.repositories.responses.FriendshipStatus;
 import awais.instagrabber.repositories.responses.Media;
 import awais.instagrabber.repositories.responses.User;
 import awais.instagrabber.repositories.responses.UserProfileContextLink;
+import awais.instagrabber.repositories.responses.story.StoryResponse;
 import awais.instagrabber.utils.Constants;
 import awais.instagrabber.utils.CookieUtils;
 import awais.instagrabber.utils.DownloadUtils;
@@ -1005,13 +1005,12 @@ public class ProfileFragment extends Fragment implements SwipeRefreshLayout.OnRe
     private void fetchStoryAndHighlights(final long profileId) {
         storiesService.getUserStory(
                 StoryViewerOptions.forUser(profileId, profileModel.getFullName()),
-                new ServiceCallback<List<StoryModel>>() {
+                new ServiceCallback<StoryResponse>() {
                     @Override
-                    public void onSuccess(final List<StoryModel> storyModels) {
-                        if (storyModels != null && !storyModels.isEmpty()) {
-                            profileDetailsBinding.mainProfileImage.setStoriesBorder(1);
-                            hasStories = true;
-                        }
+                    public void onSuccess(final StoryResponse response) {
+                        if (response == null || response.getReel() == null) return;
+                        profileDetailsBinding.mainProfileImage.setStoriesBorder(1);
+                        hasStories = true;
                     }
 
                     @Override
@@ -1019,22 +1018,23 @@ public class ProfileFragment extends Fragment implements SwipeRefreshLayout.OnRe
                         Log.e(TAG, "Error", t);
                     }
                 });
-        storiesService.fetchHighlights(profileId,
-                                       new ServiceCallback<List<HighlightModel>>() {
-                                           @Override
-                                           public void onSuccess(final List<HighlightModel> result) {
-                                               if (result != null) {
-                                                   profileDetailsBinding.highlightsList.setVisibility(View.VISIBLE);
-                                                   highlightsViewModel.setList(result);
-                                               } else profileDetailsBinding.highlightsList.setVisibility(View.GONE);
-                                           }
+        storiesService.fetchHighlights(
+                profileId,
+                new ServiceCallback<List<HighlightModel>>() {
+                    @Override
+                    public void onSuccess(final List<HighlightModel> result) {
+                        if (result != null) {
+                            profileDetailsBinding.highlightsList.setVisibility(View.VISIBLE);
+                            highlightsViewModel.setList(result);
+                        } else profileDetailsBinding.highlightsList.setVisibility(View.GONE);
+                    }
 
-                                           @Override
-                                           public void onFailure(final Throwable t) {
-                                               profileDetailsBinding.highlightsList.setVisibility(View.GONE);
-                                               Log.e(TAG, "Error", t);
-                                           }
-                                       });
+                    @Override
+                    public void onFailure(final Throwable t) {
+                        profileDetailsBinding.highlightsList.setVisibility(View.GONE);
+                        Log.e(TAG, "Error", t);
+                    }
+                });
     }
 
     private void setupCommonListeners() {

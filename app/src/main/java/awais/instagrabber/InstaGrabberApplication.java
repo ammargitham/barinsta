@@ -11,6 +11,7 @@ import com.facebook.imagepipeline.core.ImagePipelineConfig;
 
 import java.net.CookieHandler;
 import java.text.SimpleDateFormat;
+import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 
 import awais.instagrabber.utils.Constants;
@@ -23,6 +24,7 @@ import static awais.instagrabber.utils.CookieUtils.NET_COOKIE_MANAGER;
 import static awais.instagrabber.utils.Utils.applicationHandler;
 import static awais.instagrabber.utils.Utils.cacheDir;
 import static awais.instagrabber.utils.Utils.clipboardManager;
+import static awais.instagrabber.utils.Utils.dateTimeFormatter;
 import static awais.instagrabber.utils.Utils.datetimeParser;
 import static awais.instagrabber.utils.Utils.settingsHelper;
 
@@ -55,7 +57,7 @@ public final class InstaGrabberApplication extends Application {
                 Log.e(TAG, "Error", e);
             }
         }
-      
+
         // final Set<RequestListener> requestListeners = new HashSet<>();
         // requestListeners.add(new RequestLoggingListener());
         final ImagePipelineConfig imagePipelineConfig = ImagePipelineConfig
@@ -80,11 +82,13 @@ public final class InstaGrabberApplication extends Application {
         if (clipboardManager == null)
             clipboardManager = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
 
-        if (datetimeParser == null)
-            datetimeParser = new SimpleDateFormat(
-                    settingsHelper.getBoolean(Constants.CUSTOM_DATE_TIME_FORMAT_ENABLED) ?
-                    settingsHelper.getString(Constants.CUSTOM_DATE_TIME_FORMAT) :
-                    settingsHelper.getString(Constants.DATE_TIME_FORMAT), LocaleUtils.getCurrentLocale());
+        if (datetimeParser == null || dateTimeFormatter == null) {
+            final String pattern = settingsHelper.getBoolean(Constants.CUSTOM_DATE_TIME_FORMAT_ENABLED)
+                                   ? settingsHelper.getString(Constants.CUSTOM_DATE_TIME_FORMAT)
+                                   : settingsHelper.getString(Constants.DATE_TIME_FORMAT);
+            datetimeParser = new SimpleDateFormat(pattern, LocaleUtils.getCurrentLocale());
+            dateTimeFormatter = DateTimeFormatter.ofPattern(pattern, LocaleUtils.getCurrentLocale());
+        }
 
         if (TextUtils.isEmpty(settingsHelper.getString(Constants.DEVICE_UUID))) {
             settingsHelper.putString(Constants.DEVICE_UUID, UUID.randomUUID().toString());

@@ -25,6 +25,8 @@ import awais.instagrabber.repositories.requests.StoryViewerOptions;
 import awais.instagrabber.repositories.responses.FriendshipStatus;
 import awais.instagrabber.repositories.responses.StoryStickerResponse;
 import awais.instagrabber.repositories.responses.User;
+import awais.instagrabber.repositories.responses.story.StoryArchiveResponse;
+import awais.instagrabber.repositories.responses.story.StoryResponse;
 import awais.instagrabber.utils.Constants;
 import awais.instagrabber.utils.ResponseBodyUtils;
 import awais.instagrabber.utils.TextUtils;
@@ -304,7 +306,7 @@ public class StoriesService extends BaseService {
     }
 
     public void fetchArchive(final String maxId,
-                             final ServiceCallback<ArchiveFetchResponse> callback) {
+                             final ServiceCallback<StoryArchiveResponse> callback) {
         final Map<String, String> form = new HashMap<>();
         form.put("include_suggested_highlights", "false");
         form.put("is_in_archive_home", "true");
@@ -312,46 +314,18 @@ public class StoriesService extends BaseService {
         if (!TextUtils.isEmpty(maxId)) {
             form.put("max_id", maxId); // NOT TESTED
         }
-        final Call<String> request = repository.fetchArchive(form);
-        request.enqueue(new Callback<String>() {
+        final Call<StoryArchiveResponse> request = repository.fetchArchive(form);
+        request.enqueue(new Callback<StoryArchiveResponse>() {
             @Override
-            public void onResponse(@NonNull final Call<String> call, @NonNull final Response<String> response) {
-                try {
-                    if (callback == null) {
-                        return;
-                    }
-                    final String body = response.body();
-                    if (TextUtils.isEmpty(body)) {
-                        callback.onSuccess(null);
-                        return;
-                    }
-                    final JSONObject data = new JSONObject(body);
-                    final JSONArray highlightsReel = data.getJSONArray("items");
-
-                    final int length = highlightsReel.length();
-                    final List<HighlightModel> highlightModels = new ArrayList<>();
-
-                    for (int i = 0; i < length; ++i) {
-                        final JSONObject highlightNode = highlightsReel.getJSONObject(i);
-                        highlightModels.add(new HighlightModel(
-                                null,
-                                highlightNode.getString(Constants.EXTRAS_ID),
-                                highlightNode.getJSONObject("cover_image_version").getString("url"),
-                                highlightNode.getLong("latest_reel_media"),
-                                highlightNode.getInt("media_count")
-                        ));
-                    }
-                    callback.onSuccess(new ArchiveFetchResponse(highlightModels,
-                                                                data.getBoolean("more_available"),
-                                                                data.getString("max_id")));
-                } catch (JSONException e) {
-                    Log.e(TAG, "onResponse", e);
-                    callback.onFailure(e);
+            public void onResponse(@NonNull final Call<StoryArchiveResponse> call, @NonNull final Response<StoryArchiveResponse> response) {
+                if (callback == null) {
+                    return;
                 }
+                callback.onSuccess(response.body());
             }
 
             @Override
-            public void onFailure(@NonNull final Call<String> call, @NonNull final Throwable t) {
+            public void onFailure(@NonNull final Call<StoryArchiveResponse> call, @NonNull final Throwable t) {
                 if (callback != null) {
                     callback.onFailure(t);
                 }
@@ -360,58 +334,61 @@ public class StoriesService extends BaseService {
     }
 
     public void getUserStory(final StoryViewerOptions options,
-                             final ServiceCallback<List<StoryModel>> callback) {
+                             final ServiceCallback<StoryResponse> callback) {
         final String url = buildUrl(options);
-        final Call<String> userStoryCall = repository.getUserStory(url);
-        final boolean isLocOrHashtag = options.getType() == StoryViewerOptions.Type.LOCATION || options.getType() == StoryViewerOptions.Type.HASHTAG;
-        final boolean isHighlight = options.getType() == StoryViewerOptions.Type.HIGHLIGHT || options
-                .getType() == StoryViewerOptions.Type.STORY_ARCHIVE;
-        userStoryCall.enqueue(new Callback<String>() {
+        final Call<StoryResponse> userStoryCall = repository.getUserStory(url);
+        // final boolean isLocOrHashtag = options.getType() == StoryViewerOptions.Type.LOCATION
+        //         || options.getType() == StoryViewerOptions.Type.HASHTAG;
+        // final boolean isHighlight = options.getType() == StoryViewerOptions.Type.HIGHLIGHT
+        //         || options.getType() == StoryViewerOptions.Type.STORY_ARCHIVE;
+        userStoryCall.enqueue(new Callback<StoryResponse>() {
             @Override
-            public void onResponse(@NonNull final Call<String> call, @NonNull final Response<String> response) {
-                JSONObject data;
-                try {
-                    final String body = response.body();
-                    if (body == null) {
-                        Log.e(TAG, "body is null");
-                        return;
-                    }
-                    data = new JSONObject(body);
-
-                    if (!isHighlight) {
-                        data = data.optJSONObject((isLocOrHashtag) ? "story" : "reel");
-                    } else {
-                        data = data.getJSONObject("reels").optJSONObject(options.getName());
-                    }
-
-                    String username = null;
-                    if (data != null
-                            // && localUsername == null
-                            && !isLocOrHashtag) {
-                        username = data.getJSONObject("user").getString("username");
-                    }
-
-                    JSONArray media;
-                    if (data != null
-                            && (media = data.optJSONArray("items")) != null
-                            && media.length() > 0 && media.optJSONObject(0) != null) {
-                        final int mediaLen = media.length();
-                        final List<StoryModel> models = new ArrayList<>();
-                        for (int i = 0; i < mediaLen; ++i) {
-                            data = media.getJSONObject(i);
-                            models.add(ResponseBodyUtils.parseStoryItem(data, isLocOrHashtag, username));
-                        }
-                        callback.onSuccess(models);
-                    } else {
-                        callback.onSuccess(null);
-                    }
-                } catch (JSONException e) {
-                    Log.e(TAG, "Error parsing string", e);
-                }
+            public void onResponse(@NonNull final Call<StoryResponse> call, @NonNull final Response<StoryResponse> response) {
+                if (callback == null) return;
+                callback.onSuccess(response.body());
+                // JSONObject data;
+                // try {
+                //     final String body = response.body();
+                //     if (body == null) {
+                //         Log.e(TAG, "body is null");
+                //         return;
+                //     }
+                //     data = new JSONObject(body);
+                //
+                //     if (!isHighlight) {
+                //         data = data.optJSONObject((isLocOrHashtag) ? "story" : "reel");
+                //     } else {
+                //         data = data.getJSONObject("reels").optJSONObject(options.getName());
+                //     }
+                //
+                //     String username = null;
+                //     if (data != null
+                //             // && localUsername == null
+                //             && !isLocOrHashtag) {
+                //         username = data.getJSONObject("user").getString("username");
+                //     }
+                //
+                //     JSONArray media;
+                //     if (data != null
+                //             && (media = data.optJSONArray("items")) != null
+                //             && media.length() > 0 && media.optJSONObject(0) != null) {
+                //         final int mediaLen = media.length();
+                //         final List<StoryModel> models = new ArrayList<>();
+                //         for (int i = 0; i < mediaLen; ++i) {
+                //             data = media.getJSONObject(i);
+                //             models.add(ResponseBodyUtils.parseStoryItem(data, isLocOrHashtag, username));
+                //         }
+                //         callback.onSuccess(models);
+                //     } else {
+                //         callback.onSuccess(null);
+                //     }
+                // } catch (JSONException e) {
+                //     Log.e(TAG, "Error parsing string", e);
+                // }
             }
 
             @Override
-            public void onFailure(@NonNull final Call<String> call, @NonNull final Throwable t) {
+            public void onFailure(@NonNull final Call<StoryResponse> call, @NonNull final Throwable t) {
                 callback.onFailure(t);
             }
         });
@@ -576,29 +553,5 @@ public class StoriesService extends BaseService {
             return result;
         });
         return listCopy;
-    }
-
-    public static class ArchiveFetchResponse {
-        private final List<HighlightModel> archives;
-        private final boolean hasNextPage;
-        private final String nextCursor;
-
-        public ArchiveFetchResponse(final List<HighlightModel> archives, final boolean hasNextPage, final String nextCursor) {
-            this.archives = archives;
-            this.hasNextPage = hasNextPage;
-            this.nextCursor = nextCursor;
-        }
-
-        public List<HighlightModel> getResult() {
-            return archives;
-        }
-
-        public boolean hasNextPage() {
-            return hasNextPage;
-        }
-
-        public String getNextCursor() {
-            return nextCursor;
-        }
     }
 }

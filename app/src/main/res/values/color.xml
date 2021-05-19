@@ -34,6 +34,7 @@
 
     <color name="black">#000000</color>
     <color name="black_800">#121212</color>
+    <color name="black_a30">#4D000000</color>
     <color name="black_a50">#80000000</color>
     <color name="black_a80">#CC000000</color>
 

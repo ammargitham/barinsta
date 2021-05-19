@@ -33,20 +33,20 @@ import java.util.Objects;
 import awais.instagrabber.R;
 import awais.instagrabber.adapters.FeedStoriesListAdapter;
 import awais.instagrabber.adapters.FeedStoriesListAdapter.OnFeedStoryClickListener;
-import awais.instagrabber.adapters.HighlightStoriesListAdapter;
-import awais.instagrabber.adapters.HighlightStoriesListAdapter.OnHighlightStoryClickListener;
+import awais.instagrabber.adapters.StoryArchiveListAdapter;
+import awais.instagrabber.adapters.StoryArchiveListAdapter.OnArchiveClickListener;
 import awais.instagrabber.customviews.helpers.RecyclerLazyLoader;
 import awais.instagrabber.databinding.FragmentStoryListViewerBinding;
 import awais.instagrabber.fragments.settings.MorePreferencesFragmentDirections;
 import awais.instagrabber.models.FeedStoryModel;
-import awais.instagrabber.models.HighlightModel;
 import awais.instagrabber.repositories.requests.StoryViewerOptions;
+import awais.instagrabber.repositories.responses.story.StoryArchiveResponse;
+import awais.instagrabber.repositories.responses.story.StoryArchiveResponse.ArchiveResponseItem;
 import awais.instagrabber.utils.TextUtils;
 import awais.instagrabber.viewmodels.ArchivesViewModel;
 import awais.instagrabber.viewmodels.FeedStoriesViewModel;
 import awais.instagrabber.webservices.ServiceCallback;
 import awais.instagrabber.webservices.StoriesService;
-import awais.instagrabber.webservices.StoriesService.ArchiveFetchResponse;
 
 public final class StoryListViewerFragment extends Fragment implements SwipeRefreshLayout.OnRefreshListener {
     private static final String TAG = "StoryListViewerFragment";
@@ -83,24 +83,15 @@ public final class StoryListViewerFragment extends Fragment implements SwipeRefr
         }
     };
 
-    private final OnHighlightStoryClickListener archiveClickListener = new OnHighlightStoryClickListener() {
-        @Override
-        public void onHighlightClick(final HighlightModel model, final int position) {
-            if (model == null) return;
-            final NavDirections action = StoryListViewerFragmentDirections
-                    .actionStoryListFragmentToStoryViewerFragment(StoryViewerOptions.forStoryArchive(model.getId()));
-            NavHostFragment.findNavController(StoryListViewerFragment.this).navigate(action);
-        }
-
-        @Override
-        public void onProfileClick(final String username) {
-            openProfile(username);
-        }
+    private final OnArchiveClickListener archiveClickListener = item -> {
+        final NavDirections action = StoryListViewerFragmentDirections
+                .actionStoryListFragmentToStoryViewerFragment(StoryViewerOptions.forStoryArchive(item.getId()));
+        NavHostFragment.findNavController(StoryListViewerFragment.this).navigate(action);
     };
 
-    private final ServiceCallback<ArchiveFetchResponse> cb = new ServiceCallback<ArchiveFetchResponse>() {
+    private final ServiceCallback<StoryArchiveResponse> cb = new ServiceCallback<StoryArchiveResponse>() {
         @Override
-        public void onSuccess(final ArchiveFetchResponse result) {
+        public void onSuccess(final StoryArchiveResponse result) {
             binding.swipeRefreshLayout.setRefreshing(false);
             if (result == null) {
                 try {
@@ -108,10 +99,10 @@ public final class StoryListViewerFragment extends Fragment implements SwipeRefr
                     Toast.makeText(context, R.string.empty_list, Toast.LENGTH_SHORT).show();
                 } catch (Exception ignored) {}
             } else {
-                endCursor = result.getNextCursor();
-                final List<HighlightModel> models = archivesViewModel.getList().getValue();
-                final List<HighlightModel> modelsCopy = models == null ? new ArrayList<>() : new ArrayList<>(models);
-                modelsCopy.addAll(result.getResult());
+                endCursor = result.getMaxId();
+                final List<ArchiveResponseItem> models = archivesViewModel.getList().getValue();
+                final List<ArchiveResponseItem> modelsCopy = models == null ? new ArrayList<>() : new ArrayList<>(models);
+                modelsCopy.addAll(result.getItems());
                 archivesViewModel.setList(modelsCopy);
             }
         }
@@ -220,7 +211,7 @@ public final class StoryListViewerFragment extends Fragment implements SwipeRefr
             });
             binding.rvStories.addOnScrollListener(lazyLoader);
             archivesViewModel = new ViewModelProvider(fragmentActivity).get(ArchivesViewModel.class);
-            final HighlightStoriesListAdapter adapter = new HighlightStoriesListAdapter(archiveClickListener);
+            final StoryArchiveListAdapter adapter = new StoryArchiveListAdapter(archiveClickListener);
             binding.rvStories.setLayoutManager(layoutManager);
             binding.rvStories.setAdapter(adapter);
             archivesViewModel.getList().observe(getViewLifecycleOwner(), adapter::submitList);

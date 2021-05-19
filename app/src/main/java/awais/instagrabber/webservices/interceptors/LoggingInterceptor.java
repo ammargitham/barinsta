@@ -17,7 +17,7 @@ public class LoggingInterceptor implements Interceptor {
 
     @NonNull
     @Override
-    public Response intercept(Interceptor.Chain chain) throws IOException {
+    public Response intercept(@NonNull Interceptor.Chain chain) throws IOException {
         final Request request = chain.request();
         long t1 = System.nanoTime();
         Log.i(TAG, String.format("Sending request %s on %s%n%s",

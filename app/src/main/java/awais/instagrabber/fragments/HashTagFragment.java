@@ -39,7 +39,6 @@ import com.google.android.material.snackbar.Snackbar;
 import com.google.common.collect.ImmutableList;
 
 import java.util.Date;
-import java.util.List;
 import java.util.Set;
 
 import awais.instagrabber.R;
@@ -56,7 +55,6 @@ import awais.instagrabber.db.repositories.FavoriteRepository;
 import awais.instagrabber.db.repositories.RepositoryCallback;
 import awais.instagrabber.dialogs.PostsLayoutPreferencesDialogFragment;
 import awais.instagrabber.models.PostsLayoutPreferences;
-import awais.instagrabber.models.StoryModel;
 import awais.instagrabber.models.enums.FavoriteType;
 import awais.instagrabber.models.enums.FollowingType;
 import awais.instagrabber.repositories.requests.StoryViewerOptions;
@@ -565,28 +563,28 @@ public class HashTagFragment extends Fragment implements SwipeRefreshLayout.OnRe
     }
 
     private void fetchStories() {
-        if (!isLoggedIn) return;
-        storiesFetching = true;
-        storiesService.getUserStory(
-                StoryViewerOptions.forHashtag(hashtagModel.getName()),
-                new ServiceCallback<List<StoryModel>>() {
-                    @Override
-                    public void onSuccess(final List<StoryModel> storyModels) {
-                        if (storyModels != null && !storyModels.isEmpty()) {
-                            hashtagDetailsBinding.mainHashtagImage.setStoriesBorder(1);
-                            hasStories = true;
-                        } else {
-                            hasStories = false;
-                        }
-                        storiesFetching = false;
-                    }
-
-                    @Override
-                    public void onFailure(final Throwable t) {
-                        Log.e(TAG, "Error", t);
-                        storiesFetching = false;
-                    }
-                });
+        // if (!isLoggedIn) return;
+        // storiesFetching = true;
+        // storiesService.getUserStory(
+        //         StoryViewerOptions.forHashtag(hashtagModel.getName()),
+        //         new ServiceCallback<List<StoryModel>>() {
+        //             @Override
+        //             public void onSuccess(final List<StoryModel> storyModels) {
+        //                 if (storyModels != null && !storyModels.isEmpty()) {
+        //                     hashtagDetailsBinding.mainHashtagImage.setStoriesBorder(1);
+        //                     hasStories = true;
+        //                 } else {
+        //                     hasStories = false;
+        //                 }
+        //                 storiesFetching = false;
+        //             }
+        //
+        //             @Override
+        //             public void onFailure(final Throwable t) {
+        //                 Log.e(TAG, "Error", t);
+        //                 storiesFetching = false;
+        //             }
+        //         });
     }
 
     private void setTitle() {

@@ -1,29 +1,37 @@
 package awais.instagrabber.adapters;
 
+import android.content.Context;
+import android.util.TypedValue;
 import android.view.LayoutInflater;
-import android.view.View;
 import android.view.ViewGroup;
 
+import androidx.annotation.DrawableRes;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
 
-import awais.instagrabber.databinding.ItemStoryBinding;
-import awais.instagrabber.models.StoryModel;
+import java.util.Objects;
 
-public final class StoriesAdapter extends ListAdapter<StoryModel, StoriesAdapter.StoryViewHolder> {
+import awais.instagrabber.R;
+import awais.instagrabber.databinding.ItemStoryBinding;
+import awais.instagrabber.repositories.responses.story.StoryMedia;
+import awais.instagrabber.utils.ResponseBodyUtils;
+
+public final class StoriesAdapter extends ListAdapter<StoryMedia, StoriesAdapter.StoryViewHolder> {
     private final OnItemClickListener onItemClickListener;
 
-    private static final DiffUtil.ItemCallback<StoryModel> diffCallback = new DiffUtil.ItemCallback<StoryModel>() {
+    private static final DiffUtil.ItemCallback<StoryMedia> diffCallback = new DiffUtil.ItemCallback<StoryMedia>() {
         @Override
-        public boolean areItemsTheSame(@NonNull final StoryModel oldItem, @NonNull final StoryModel newItem) {
-            return oldItem.getStoryMediaId().equals(newItem.getStoryMediaId());
+        public boolean areItemsTheSame(@NonNull final StoryMedia oldItem, @NonNull final StoryMedia newItem) {
+            return Objects.equals(oldItem.getPk(), newItem.getPk());
         }
 
         @Override
-        public boolean areContentsTheSame(@NonNull final StoryModel oldItem, @NonNull final StoryModel newItem) {
-            return oldItem.getStoryMediaId().equals(newItem.getStoryMediaId());
+        public boolean areContentsTheSame(@NonNull final StoryMedia oldItem, @NonNull final StoryMedia newItem) {
+            return Objects.equals(oldItem.getPk(), newItem.getPk());
         }
     };
     private int activeIndex;
@@ -43,12 +51,12 @@ public final class StoriesAdapter extends ListAdapter<StoryModel, StoriesAdapter
 
     @Override
     public void onBindViewHolder(@NonNull final StoryViewHolder holder, final int position) {
-        final StoryModel storyModel = getItem(position);
+        final StoryMedia storyModel = getItem(position);
         holder.bind(storyModel, position, activeIndex == position);
     }
 
     public void setActiveIndex(final int activeIndex) {
-        int prevActiveIndex = this.activeIndex;
+        final int prevActiveIndex = this.activeIndex;
         this.activeIndex = activeIndex;
         // notify prev and current
         notifyItemChanged(prevActiveIndex);
@@ -58,32 +66,45 @@ public final class StoriesAdapter extends ListAdapter<StoryModel, StoriesAdapter
     public final static class StoryViewHolder extends RecyclerView.ViewHolder {
         private final ItemStoryBinding binding;
         private final OnItemClickListener clickListener;
+        @DrawableRes
+        private int selectableItemBackground;
 
-        public StoryViewHolder(final ItemStoryBinding binding,
-                               final OnItemClickListener clickListener) {
+        public StoryViewHolder(@NonNull final ItemStoryBinding binding,
+                               @Nullable final OnItemClickListener clickListener) {
             super(binding.getRoot());
+            final TypedValue typedValue = new TypedValue();
+            final Context context = itemView.getContext();
+            if (context != null) {
+                context.getTheme().resolveAttribute(android.R.attr.selectableItemBackground, typedValue, true);
+                selectableItemBackground = typedValue.resourceId;
+            }
             this.binding = binding;
             this.clickListener = clickListener;
+            binding.getRoot().setClipToOutline(true);
         }
 
-        public void bind(final StoryModel model,
+        public void bind(final StoryMedia media,
                          final int position,
                          final boolean isActive) {
-            if (model == null) return;
-            // model.setPosition(position);
+            if (media == null) return;
 
-            itemView.setTag(model);
+            itemView.setTag(media);
             itemView.setOnClickListener(v -> {
                 if (clickListener == null) return;
-                clickListener.onItemClick(model, position);
+                clickListener.onItemClick(media, position);
             });
 
-            binding.selectedView.setVisibility(isActive ? View.VISIBLE : View.GONE);
-            binding.icon.setImageURI(model.getStoryUrl());
+            binding.getRoot().setForeground(ContextCompat.getDrawable(
+                    itemView.getContext(),
+                    isActive ? selectableItemBackground : R.drawable.fg_semi_black_with_ripple
+            ));
+            // binding.selectedView.setVisibility(isActive ? View.VISIBLE : View.GONE);
+            final String imageUrl = ResponseBodyUtils.getImageUrl(media);
+            binding.icon.setImageURI(imageUrl);
         }
     }
 
     public interface OnItemClickListener {
-        void onItemClick(StoryModel storyModel, int position);
+        void onItemClick(@NonNull StoryMedia storyModel, int position);
     }
 }

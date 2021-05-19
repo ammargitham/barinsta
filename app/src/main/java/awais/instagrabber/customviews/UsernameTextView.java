@@ -39,6 +39,7 @@ public class UsernameTextView extends AppCompatTextView {
     private void init() {
         try {
             final Drawable verifiedDrawable = AppCompatResources.getDrawable(getContext(), R.drawable.verified);
+            if (verifiedDrawable == null) return;
             final Drawable drawable = verifiedDrawable.mutate();
             drawable.setBounds(0, 0, drawableSize, drawableSize);
             verifiedSpan = new VerticalImageSpan(drawable);
@@ -53,7 +54,7 @@ public class UsernameTextView extends AppCompatTextView {
 
     public void setUsername(final CharSequence username, final boolean verified) {
         this.verified = verified;
-        final SpannableStringBuilder sb = new SpannableStringBuilder(username);
+        final SpannableStringBuilder sb = new SpannableStringBuilder(username == null ? "" : username);
         if (verified) {
             try {
                 if (verifiedSpan != null) {
