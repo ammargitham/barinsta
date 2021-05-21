@@ -8,8 +8,11 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
+import com.google.common.collect.Iterables;
+
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -107,10 +110,16 @@ public class StoryViewerFragmentViewModel extends ViewModel {
             case USER:
             case STORY:
             case STORY_ARCHIVE:
-                break;
+                if (stories == null) return storyIndex;
+                final int index = Iterables.indexOf(stories, s -> {
+                    if (!(s instanceof ArchiveResponseItem)) return false;
+                    return Objects.equals(((ArchiveResponseItem) s).getId(), options.getName());
+                });
+                return Math.max(index, 0);
             case HIGHLIGHT:
             case FEED_STORY:
-                storyIndex = options.getStoryIndex();
+                return options.getStoryIndex();
+            default:
                 break;
         }
         return storyIndex;

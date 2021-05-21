@@ -571,7 +571,7 @@ public class HashTagFragment extends Fragment implements SwipeRefreshLayout.OnRe
         //             @Override
         //             public void onSuccess(final List<StoryModel> storyModels) {
         //                 if (storyModels != null && !storyModels.isEmpty()) {
-        //                     hashtagDetailsBinding.mainHashtagImage.setStoriesBorder(1);
+        //                     hashtagDetailsBinding.mainHashtagImage.setBorder(1);
         //                     hasStories = true;
         //                 } else {
         //                     hasStories = false;

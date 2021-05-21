@@ -572,7 +572,7 @@ public class LocationFragment extends Fragment implements SwipeRefreshLayout.OnR
         //             @Override
         //             public void onSuccess(final List<StoryModel> storyModels) {
         //                 if (storyModels != null && !storyModels.isEmpty()) {
-        //                     locationDetailsBinding.mainLocationImage.setStoriesBorder(1);
+        //                     locationDetailsBinding.mainLocationImage.setBorder(1);
         //                     hasStories = true;
         //                 }
         //                 storiesFetching = false;

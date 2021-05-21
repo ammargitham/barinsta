@@ -2,6 +2,8 @@ package awais.instagrabber.customviews.stickers;
 
 import android.content.Context;
 import android.graphics.Color;
+import android.graphics.PorterDuff;
+import android.graphics.PorterDuffColorFilter;
 import android.graphics.drawable.Drawable;
 import android.util.AttributeSet;
 import android.util.TypedValue;
@@ -20,6 +22,8 @@ import awais.instagrabber.customviews.CircularImageView;
 import awais.instagrabber.repositories.responses.story.StoryQuestion;
 import awais.instagrabber.utils.StickerFactory;
 import awais.instagrabber.utils.ViewUtils;
+
+import static awais.instagrabber.utils.ColorUtils.darken;
 
 public class QuestionStickerView extends FrameLayout implements StickerView {
     private static final float PROFILE_PIC_RATIO = 0.165f;
@@ -108,6 +112,7 @@ public class QuestionStickerView extends FrameLayout implements StickerView {
 
     private void updateProfilePic(@NonNull final StoryQuestion.QuestionSticker questionSticker) {
         profilePic.setImageURI(questionSticker.getProfilePicUrl());
+        profilePic.setBorder(Color.parseColor(questionSticker.getBackgroundColor()), 1);
         FrameLayout.LayoutParams layoutParams = (FrameLayout.LayoutParams) profilePic.getLayoutParams();
         final int width = (int) (bounds.width * PROFILE_PIC_RATIO);
         if (layoutParams == null) {
@@ -146,7 +151,6 @@ public class QuestionStickerView extends FrameLayout implements StickerView {
         final LinearLayout.LayoutParams layoutParams = (LinearLayout.LayoutParams) input.getLayoutParams();
         final int margin = (int) (bounds.height * 0.1);
         layoutParams.setMargins(margin, margin, margin, margin);
-        final double diag = Math.sqrt(bounds.height * bounds.height + bounds.width * bounds.width);
         final String questionType = questionSticker.getQuestionType();
         final String hint;
         final double multiplier;
@@ -164,8 +168,16 @@ public class QuestionStickerView extends FrameLayout implements StickerView {
                 multiplier = 0.03;
                 break;
         }
-        final Drawable drawable = ViewUtils.createRoundRectDrawable((int) (diag * multiplier),
-                                                                    Color.parseColor("#e2e2e2"));
+        final PorterDuffColorFilter colorFilter = new PorterDuffColorFilter(
+                darken(Color.parseColor(questionSticker.getBackgroundColor())),
+                PorterDuff.Mode.SRC
+        );
+        final double diagonal = Math.sqrt(bounds.height * bounds.height + bounds.width * bounds.width);
+        final Drawable drawable = ViewUtils.createRoundRectDrawable(
+                (int) (diagonal * multiplier),
+                Color.parseColor(questionSticker.getBackgroundColor()),
+                colorFilter
+        );
         input.setBackground(drawable);
         input.setHint(hint);
         final int textColor = Color.parseColor(questionSticker.getTextColor());

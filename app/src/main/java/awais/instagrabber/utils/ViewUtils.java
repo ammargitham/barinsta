@@ -2,6 +2,8 @@ package awais.instagrabber.utils;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.graphics.ColorFilter;
+import android.graphics.Paint;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.ShapeDrawable;
@@ -41,8 +43,17 @@ public final class ViewUtils {
 
     @NonNull
     public static Drawable createRoundRectDrawable(int rad, int defaultColor) {
+        return createRoundRectDrawable(rad, defaultColor, null);
+    }
+
+    @NonNull
+    public static Drawable createRoundRectDrawable(int rad, int defaultColor, @Nullable final ColorFilter colorFilter) {
         final ShapeDrawable defaultDrawable = new ShapeDrawable(new RoundRectShape(new float[]{rad, rad, rad, rad, rad, rad, rad, rad}, null, null));
-        defaultDrawable.getPaint().setColor(defaultColor);
+        final Paint paint = defaultDrawable.getPaint();
+        if (colorFilter != null) {
+            paint.setColorFilter(colorFilter);
+        }
+        paint.setColor(defaultColor);
         return defaultDrawable;
     }
 

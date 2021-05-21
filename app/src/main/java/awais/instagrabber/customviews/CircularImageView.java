@@ -5,6 +5,7 @@ import android.content.res.Resources;
 import android.graphics.Color;
 import android.util.AttributeSet;
 
+import androidx.annotation.ColorInt;
 import androidx.annotation.Nullable;
 
 import com.facebook.drawee.drawable.ScalingUtils;
@@ -50,7 +51,7 @@ public class CircularImageView extends SimpleDraweeView {
     }
 
     /* types: 0 clear, 1 green (feed bestie / has story), 2 red (live) */
-    public void setStoriesBorder(final int type) {
+    public void setBorder(final int type) {
         // private final int borderSize = 8;
         final int color = type == 2 ? Color.RED : Color.GREEN;
         RoundingParams roundingParams = getHierarchy().getRoundingParams();
@@ -58,6 +59,15 @@ public class CircularImageView extends SimpleDraweeView {
             roundingParams = RoundingParams.asCircle().setRoundingMethod(RoundingParams.RoundingMethod.BITMAP_ONLY);
         }
         roundingParams.setBorder(color, type == 0 ? 0f : 5.0f);
+        getHierarchy().setRoundingParams(roundingParams);
+    }
+
+    public void setBorder(@ColorInt final int color, final float width) {
+        RoundingParams roundingParams = getHierarchy().getRoundingParams();
+        if (roundingParams == null) {
+            roundingParams = RoundingParams.asCircle().setRoundingMethod(RoundingParams.RoundingMethod.BITMAP_ONLY);
+        }
+        roundingParams.setBorder(color, width);
         getHierarchy().setRoundingParams(roundingParams);
     }
 }

@@ -26,7 +26,6 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -41,6 +40,9 @@ import com.facebook.drawee.backends.pipeline.Fresco;
 import com.facebook.drawee.controller.BaseControllerListener;
 import com.facebook.drawee.interfaces.DraweeController;
 import com.facebook.imagepipeline.image.ImageInfo;
+import com.facebook.imagepipeline.request.ImageRequest;
+import com.facebook.imagepipeline.request.ImageRequestBuilder;
+import com.facebook.imagepipeline.request.Postprocessor;
 import com.google.android.exoplayer2.MediaItem;
 import com.google.android.exoplayer2.SimpleExoPlayer;
 import com.google.android.exoplayer2.source.DefaultMediaSourceFactory;
@@ -62,8 +64,10 @@ import awais.instagrabber.R;
 import awais.instagrabber.activities.MainActivity;
 import awais.instagrabber.adapters.StoriesAdapter;
 import awais.instagrabber.asyncs.CreateThreadAction;
+import awais.instagrabber.customviews.helpers.ScalingBlurPostprocessor;
 import awais.instagrabber.customviews.helpers.VerticalSpaceItemDecoration;
 import awais.instagrabber.customviews.stickers.QuestionStickerView;
+import awais.instagrabber.customviews.stickers.StickerView;
 import awais.instagrabber.databinding.FragmentStoryViewerBinding;
 import awais.instagrabber.interfaces.SwipeEvent;
 import awais.instagrabber.models.StoryModel;
@@ -147,9 +151,11 @@ public class StoryViewerFragment extends Fragment implements QuestionStickerView
     private Drawable originalCollapsingToolbarBg;
     private Drawable originalAppbarBg;
     private ViewOutlineProvider originalAppbarOutlineProvider;
+    private StoryViewerOptions options;
 
     private final String cookie = settingsHelper.getString(Constants.COOKIE);
-    private StoryViewerOptions options;
+    private final Postprocessor postprocessor = new ScalingBlurPostprocessor(25, 3, 4);
+
 
     @Override
     public void onCreate(@Nullable final Bundle savedInstanceState) {
@@ -292,11 +298,11 @@ public class StoryViewerFragment extends Fragment implements QuestionStickerView
     public void onResume() {
         super.onResume();
         if (fragmentActivity != null) {
-            final ActionBar actionBar = fragmentActivity.getSupportActionBar();
-            if (actionBar != null) {
-                actionBar.setTitle(actionBarTitle);
-                actionBar.setSubtitle(actionBarSubtitle);
-            }
+            // final ActionBar actionBar = fragmentActivity.getSupportActionBar();
+            // if (actionBar != null) {
+            //     actionBar.setTitle(actionBarTitle);
+            //     actionBar.setSubtitle(actionBarSubtitle);
+            // }
             binding.getRoot().postDelayed(() -> {
                 originalToolbarBg = fragmentActivity.getToolbar().getBackground();
                 originalCollapsingToolbarBg = fragmentActivity.getCollapsingToolbarView().getBackground();
@@ -394,7 +400,7 @@ public class StoryViewerFragment extends Fragment implements QuestionStickerView
                     return;
             }
             setupUserDetails(storyMedia);
-            setupStickers(storyMedia);
+            binding.getRoot().postDelayed(() -> setupStickers(storyMedia), 500);
         });
         viewModel.getActiveStoryItemIndex().observe(getViewLifecycleOwner(),
                                                     index -> storyItemsAdapter.setActiveIndex(index == null ? 0 : index));
@@ -1113,13 +1119,13 @@ public class StoryViewerFragment extends Fragment implements QuestionStickerView
 
     private void setupStickers(@NonNull final StoryMedia storyMedia) {
         binding.stickers.removeAllViews();
-        final List<View> stickerViews = new ArrayList<>();
+        final List<StickerView> stickerViews = new ArrayList<>();
         final List<StoryQuestion> storyQuestions = storyMedia.getStoryQuestions();
-        if (storyQuestions != null && !storyQuestions.isEmpty()) {
-            final List<View> questionStickers = setupStickers(storyMedia, storyQuestions);
-            setupQuestionStickers(questionStickers);
-            stickerViews.addAll(questionStickers);
-        }
+        // if (storyQuestions != null && !storyQuestions.isEmpty()) {
+        //     final List<StickerView> questionStickers = setupStickers(storyMedia, storyQuestions);
+        //     setupQuestionStickers(questionStickers);
+        //     stickerViews.addAll(questionStickers);
+        // }
         final List<StoryPoll> storyPolls = storyMedia.getStoryPolls();
         if (storyPolls != null && !storyPolls.isEmpty()) {
             stickerViews.addAll(setupStickers(storyMedia, storyPolls));
@@ -1128,8 +1134,8 @@ public class StoryViewerFragment extends Fragment implements QuestionStickerView
         if (storySliders != null && !storySliders.isEmpty()) {
             stickerViews.addAll(setupStickers(storyMedia, storySliders));
         }
-        for (final View view : stickerViews) {
-            binding.stickers.addView(view);
+        for (final StickerView view : stickerViews) {
+            binding.stickers.addView((View) view);
         }
         // if (stickerViews.isEmpty()) return;
         // binding.drawView.setVisibility(View.VISIBLE);
@@ -1138,8 +1144,8 @@ public class StoryViewerFragment extends Fragment implements QuestionStickerView
     }
 
     @NonNull
-    private List<View> setupStickers(@NonNull final StoryMedia storyMedia,
-                                     @NonNull final List<? extends StorySticker> storyStickers) {
+    private List<StickerView> setupStickers(@NonNull final StoryMedia storyMedia,
+                                            @NonNull final List<? extends StorySticker> storyStickers) {
         return storyStickers
                 .stream()
                 .map(storySticker -> {
@@ -1157,8 +1163,8 @@ public class StoryViewerFragment extends Fragment implements QuestionStickerView
                 .collect(Collectors.toList());
     }
 
-    private void setupQuestionStickers(@NonNull final List<View> questionStickerViews) {
-        for (final View questionStickerView : questionStickerViews) {
+    private void setupQuestionStickers(@NonNull final List<StickerView> questionStickerViews) {
+        for (final StickerView questionStickerView : questionStickerViews) {
             if (!(questionStickerView instanceof QuestionStickerView)) continue;
             ((QuestionStickerView) questionStickerView).setOnQuestionStickerClickListener(this);
         }
@@ -1202,11 +1208,27 @@ public class StoryViewerFragment extends Fragment implements QuestionStickerView
         binding.getRoot().post(() -> {
             TransitionManager.beginDelayedTransition(binding.getRoot());
             binding.stickers.removeView(view);
+            final StoryMedia activeStoryMedia = viewModel.getActiveStoryMedia().getValue();
+            final String imageUrl = activeStoryMedia != null ? ResponseBodyUtils.getImageUrl(activeStoryMedia) : null;
+            if (imageUrl != null) {
+                final ImageRequest imageRequest = ImageRequestBuilder.newBuilderWithSource(Uri.parse(imageUrl))
+                                                                     .setPostprocessor(postprocessor)
+                                                                     .build();
+                final DraweeController draweeController =
+                        Fresco.newDraweeControllerBuilder()
+                              .setOldController(binding.activeStickerContainerBackground.getController())
+                              .setImageRequest(imageRequest)
+                              .build();
+                binding.activeStickerContainerBackground.setVisibility(View.VISIBLE);
+                binding.activeStickerContainerBackground.setController(draweeController);
+            } else {
+                final String backgroundColor = storyQuestion.getQuestionSticker().getBackgroundColor();
+                final int color = Color.parseColor(backgroundColor);
+                binding.activeStickerContainerBackground.setVisibility(View.GONE);
+                binding.activeStickerContainer.setBackgroundColor(ColorUtils.setAlphaComponent(color, 200));
+            }
             binding.activeStickerContainer.addView(view);
             binding.activeStickerContainer.setVisibility(View.VISIBLE);
-            final String backgroundColor = storyQuestion.getQuestionSticker().getBackgroundColor();
-            final int color = Color.parseColor(backgroundColor);
-            binding.activeStickerContainer.setBackgroundColor(ColorUtils.setAlphaComponent(color, 200));
             view.setElevation(Utils.convertDpToPx(8));
             binding.getRoot().post(() -> {
                 final ValueAnimator translationX = ObjectAnimator.ofFloat(

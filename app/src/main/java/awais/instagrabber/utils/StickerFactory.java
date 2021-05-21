@@ -1,30 +1,32 @@
 package awais.instagrabber.utils;
 
 import android.content.Context;
-import android.view.View;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import awais.instagrabber.customviews.stickers.QuestionStickerView;
+import awais.instagrabber.customviews.stickers.SliderStickerView;
+import awais.instagrabber.customviews.stickers.StickerView;
 import awais.instagrabber.repositories.responses.story.StoryMedia;
 import awais.instagrabber.repositories.responses.story.StoryQuestion;
+import awais.instagrabber.repositories.responses.story.StorySlider;
 import awais.instagrabber.repositories.responses.story.StorySticker;
 
 public class StickerFactory {
     @Nullable
-    public static View createSticker(@NonNull final Context context,
-                                     @NonNull final StorySticker sticker,
-                                     @NonNull final StoryMedia storyMedia,
-                                     final int containerWidth,
-                                     final int containerHeight) {
+    public static StickerView createSticker(@NonNull final Context context,
+                                            @NonNull final StorySticker sticker,
+                                            @NonNull final StoryMedia storyMedia,
+                                            final int containerWidth,
+                                            final int containerHeight) {
         switch (sticker.getType()) {
             case QUESTION:
                 return createQuestionSticker(context, sticker, storyMedia, containerWidth, containerHeight);
             case POLL:
                 break;
             case SLIDER:
-                break;
+                return createSliderSticker(context, sticker, storyMedia, containerWidth, containerHeight);
             case MENTION:
                 break;
             case QUIZ:
@@ -36,13 +38,23 @@ public class StickerFactory {
     }
 
     @NonNull
-    private static View createQuestionSticker(@NonNull final Context context,
-                                              @NonNull final StorySticker sticker,
-                                              @NonNull final StoryMedia storyMedia,
-                                              final int containerWidth,
-                                              final int containerHeight) {
+    private static StickerView createQuestionSticker(@NonNull final Context context,
+                                                     @NonNull final StorySticker sticker,
+                                                     @NonNull final StoryMedia storyMedia,
+                                                     final int containerWidth,
+                                                     final int containerHeight) {
         final QuestionStickerView view = new QuestionStickerView(context);
         view.setSticker((StoryQuestion) sticker, getBounds(storyMedia, sticker, containerWidth, containerHeight));
+        return view;
+    }
+
+    private static StickerView createSliderSticker(@NonNull final Context context,
+                                                   @NonNull final StorySticker sticker,
+                                                   @NonNull final StoryMedia storyMedia,
+                                                   final int containerWidth,
+                                                   final int containerHeight) {
+        final SliderStickerView view = new SliderStickerView(context);
+        view.setSticker((StorySlider) sticker, getBounds(storyMedia, sticker, containerWidth, containerHeight));
         return view;
     }
 

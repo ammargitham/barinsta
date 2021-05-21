@@ -219,7 +219,13 @@
         android:id="@+id/active_sticker_container"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:visibility="gone" />
+        android:visibility="gone">
+
+        <com.facebook.drawee.view.SimpleDraweeView
+            android:id="@+id/active_sticker_container_background"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+    </FrameLayout>
 
     <!--<awais.instagrabber.customviews.DrawView-->
     <!--    android:id="@+id/draw_view"-->

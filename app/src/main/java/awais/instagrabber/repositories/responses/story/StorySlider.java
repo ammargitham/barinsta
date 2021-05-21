@@ -40,6 +40,7 @@ public class StorySlider extends StorySticker {
         private final boolean viewerCanVote;
         private final float sliderVoteAverage;
         private final long sliderVoteCount;
+        private final float viewerVote;
 
         public SliderSticker(final long sliderId,
                              final String question,
@@ -47,7 +48,9 @@ public class StorySlider extends StorySticker {
                              final String textColor,
                              final String backgroundColor,
                              final boolean viewerCanVote,
-                             final float sliderVoteAverage, final long sliderVoteCount) {
+                             final float sliderVoteAverage,
+                             final long sliderVoteCount,
+                             final float viewerVote) {
             this.sliderId = sliderId;
             this.question = question;
             this.emoji = emoji;
@@ -56,6 +59,7 @@ public class StorySlider extends StorySticker {
             this.viewerCanVote = viewerCanVote;
             this.sliderVoteAverage = sliderVoteAverage;
             this.sliderVoteCount = sliderVoteCount;
+            this.viewerVote = viewerVote;
         }
 
         public long getSliderId() {
@@ -78,7 +82,7 @@ public class StorySlider extends StorySticker {
             return backgroundColor;
         }
 
-        public boolean isViewerCanVote() {
+        public boolean viewerCanVote() {
             return viewerCanVote;
         }
 
@@ -88,6 +92,10 @@ public class StorySlider extends StorySticker {
 
         public long getSliderVoteCount() {
             return sliderVoteCount;
+        }
+
+        public float getViewerVote() {
+            return viewerVote;
         }
     }
 }

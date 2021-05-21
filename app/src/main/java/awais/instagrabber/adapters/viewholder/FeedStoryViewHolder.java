@@ -34,8 +34,8 @@ public final class FeedStoryViewHolder extends RecyclerView.ViewHolder {
         binding.icon.setImageURI(profileModel.getProfilePicUrl());
         binding.icon.setAlpha(model.isFullyRead() ? 0.5F : 1.0F);
 
-        if (model.isLive()) binding.icon.setStoriesBorder(2);
-        else if (model.isBestie()) binding.icon.setStoriesBorder(1);
-        else binding.icon.setStoriesBorder(0);
+        if (model.isLive()) binding.icon.setBorder(2);
+        else if (model.isBestie()) binding.icon.setBorder(1);
+        else binding.icon.setBorder(0);
     }
 }

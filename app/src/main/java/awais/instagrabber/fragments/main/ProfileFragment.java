@@ -1009,7 +1009,7 @@ public class ProfileFragment extends Fragment implements SwipeRefreshLayout.OnRe
                     @Override
                     public void onSuccess(final StoryResponse response) {
                         if (response == null || response.getReel() == null) return;
-                        profileDetailsBinding.mainProfileImage.setStoriesBorder(1);
+                        profileDetailsBinding.mainProfileImage.setBorder(1);
                         hasStories = true;
                     }
 
